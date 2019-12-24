@@ -1,0 +1,33 @@
+--- #
+- hosts: all
+  strategy: free
+  remote_user: root
+
+  tasks:
+    - name: Disable SELinux
+      selinux:
+        state: disabled
+      register: task_result
+    - name: Reboot immediately if there was a change.
+      shell: "sleep 5 && reboot"
+      async: 1
+      poll: 0
+      when: task_result is changed
+    - name: Wait for the reboot to complete if there was a change.
+      wait_for_connection:
+        connect_timeout: 20
+        sleep: 5
+        delay: 5
+        timeout: 300
+      when: task_result is changed
+
+- hosts: swarm
+  remote_user: root
+  roles:
+    - geerlingguy.docker
+
+- hosts: swarm
+  remote_user: root 
+  tasks:
+    - name: Install dobs plugin
+      shell:  docker plugin install --grant-all-permissions  rexray/dobs DOBS_REGION=sfo2 DOBS_TOKEN=4eff8c176d371f86d11ac90c1e0221d1bdfe0a3066b24fb9ab4bf155f8a81fc0 DOBS_CONVERTUNDERSCORES=true
